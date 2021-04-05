@@ -1,5 +1,6 @@
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 
 public class UTXOPool {
@@ -50,5 +51,11 @@ public class UTXOPool {
             allUTXO.add(ut);
         }
         return allUTXO;
+    }
+
+    /** Returns a {@code Set} of all Transaction Outputs in the pool */
+    public HashSet<Transaction.Output> getAllUTXOTransactionOutputs() {
+        HashSet<Transaction.Output> setAllUTXOTransactionOutputs = new HashSet<>(H.values());
+        return setAllUTXOTransactionOutputs;
     }
 }

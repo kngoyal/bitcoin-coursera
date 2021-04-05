@@ -1,4 +1,10 @@
+import java.util.HashSet;
+import java.util.Set;
+
+
 public class TxHandler {
+
+    private UTXOPool utxoPool;
 
     /**
      * Creates a public ledger whose current UTXOPool (collection of unspent transaction outputs) is
@@ -6,7 +12,7 @@ public class TxHandler {
      * constructor.
      */
     public TxHandler(UTXOPool utxoPool) {
-        // IMPLEMENT THIS
+        this.utxoPool = new UTXOPool(utxoPool);
     }
 
     /**
@@ -19,7 +25,28 @@ public class TxHandler {
      *     values; and false otherwise.
      */
     public boolean isValidTx(Transaction tx) {
-        // IMPLEMENT THIS
+        UTXOPool uniqueUTXOs = new UTXOPool();
+        double prevTxOutputSum = 0;
+        double currTxOutputSum = 0;
+
+        for (int i=0; i<tx.numInputs(); i++) {
+            Transaction.Input in = tx.getInput(i);
+            UTXO utxo = new UTXO(in.prevTxHash, in.outputIndex);
+            Transaction.Output out = utxoPool.getTxOutput(utxo);
+            if(!utxoPool.contains(utxo)) return false;
+            if(!Crypto.verifySignature(out.address, tx.getRawDataToSign(i), in.signature))
+                return false;
+            if(uniqueUTXOs.contains(utxo)) return false;
+            uniqueUTXOs.addUTXO(utxo, out);
+            prevTxOutputSum += out.value;
+        }
+
+        for (Transaction.Output out: tx.getOutputs()) {
+            if (out.value<0) return false;
+            currTxOutputSum += out.value;
+        }
+
+        return prevTxOutputSum >= currTxOutputSum;
     }
 
     /**
@@ -28,7 +55,22 @@ public class TxHandler {
      * updating the current UTXO pool as appropriate.
      */
     public Transaction[] handleTxs(Transaction[] possibleTxs) {
-        // IMPLEMENT THIS
-    }
+        Set<Transaction> validTxs = new HashSet<>();
 
+        for(Transaction tx: possibleTxs) {
+            if(isValidTx(tx)){
+                validTxs.add(tx);
+                for (Transaction.Input txIn: tx.getInputs()){
+                    UTXO utxo= new UTXO(txIn.prevTxHash, txIn.outputIndex);
+                    utxoPool.removeUTXO(utxo);
+                }
+                for (int i = 0; i < tx.numOutputs(); i++) {
+                    UTXO utxo= new UTXO(tx.getHash(), i);
+                    utxoPool.addUTXO(utxo, tx.getOutput(i));
+                }
+            }
+        }
+
+        return validTxs.toArray(new Transaction[0]); // size of array is auto-allocated
+    }
 }
